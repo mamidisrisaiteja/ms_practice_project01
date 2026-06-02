@@ -1,0 +1,333 @@
+Smart Insurance Claim Processing System
+
+This project naturally fits ALL the concepts you mentioned:
+
+CRUD APIs
+layered architecture
+Docker
+Spring Cloud Config
+RabbitMQ + Bus Refresh
+Swagger
+H2
+Exception handling
+Audit
+Config refresh
+Multiple microservices
+1. Project Architecture
+                    API Requests
+                          ↓
+
+                 -------------------
+                 | API Gateway     |
+                 -------------------
+                          ↓
+
+ ---------------------------------------------------
+ |                  MICROSERVICES                  |
+ ---------------------------------------------------
+
+   Customer Service
+   Policy Service
+   Claim Service
+   Notification Service
+
+ ---------------------------------------------------
+                  Shared Components
+ ---------------------------------------------------
+
+   Config Server
+   RabbitMQ
+   Docker Compose
+   H2 DB
+2. Microservices
+Service	Responsibility
+Customer Service	Manage customers
+Policy Service	Manage insurance policies
+Claim Service	Raise insurance claims
+Notification Service	Send notifications
+3. Features You Will Practice
+Concept	Covered
+Microservice architecture	✅
+Controller layer	✅
+Service layer	✅
+Repository layer	✅
+Entity layer	✅
+DTO/Mapper layer	✅
+Audit fields	✅
+Constants	✅
+CRUD APIs	✅
+Exception handling	✅
+Swagger	✅
+Docker	✅
+H2	✅
+Lombok	✅
+Config Server	✅
+RabbitMQ	✅
+Spring Cloud Bus	✅
+Webhooks	✅
+4. Suggested Folder Structure
+customer-service
+│
+├── controller
+├── service
+├── repository
+├── entity
+├── dto
+├── mapper
+├── exception
+├── constants
+├── audit
+├── config
+└── util
+
+Same for:
+
+policy-service
+claim-service
+5. Example Entity Design
+Customer Entity
+@Entity
+@Table(name = "customers")
+public class Customer extends BaseAuditEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long customerId;
+
+    private String name;
+
+    private String email;
+
+    private String mobileNumber;
+}
+6. Audit Layer
+BaseAuditEntity
+@MappedSuperclass
+@EntityListeners(AuditingEntityListener.class)
+public class BaseAuditEntity {
+
+    @CreatedDate
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
+}
+7. DTO + Mapper Layer
+CustomerDTO
+@Data
+public class CustomerDTO {
+
+    private String name;
+
+    private String email;
+
+    private String mobileNumber;
+}
+Mapper
+public class CustomerMapper {
+
+    public static Customer mapToEntity(CustomerDTO dto) {
+        Customer customer = new Customer();
+        customer.setName(dto.getName());
+        customer.setEmail(dto.getEmail());
+        customer.setMobileNumber(dto.getMobileNumber());
+        return customer;
+    }
+}
+8. Repository Layer
+@Repository
+public interface CustomerRepository
+        extends JpaRepository<Customer, Long> {
+
+    Optional<Customer> findByEmail(String email);
+}
+9. Service Layer
+@Service
+@RequiredArgsConstructor
+public class CustomerService {
+
+    private final CustomerRepository repository;
+
+    public CustomerDTO createCustomer(CustomerDTO dto) {
+
+        Customer customer =
+                CustomerMapper.mapToEntity(dto);
+
+        repository.save(customer);
+
+        return dto;
+    }
+}
+10. Controller Layer
+@RestController
+@RequestMapping("/api/customers")
+@RequiredArgsConstructor
+@Tag(name = "Customer APIs")
+public class CustomerController {
+
+    private final CustomerService service;
+
+    @PostMapping
+    @Operation(summary = "Create Customer")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201",
+                description = "Customer created")
+    })
+    public ResponseEntity<CustomerDTO> createCustomer(
+            @RequestBody CustomerDTO dto) {
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(service.createCustomer(dto));
+    }
+}
+11. CRUD APIs to Implement
+Customer Service
+API	Method
+Create Customer	POST
+Get Customer	GET
+Update Customer	PUT
+Delete Customer	DELETE
+
+Same for:
+
+policies
+claims
+12. Global Exception Handler
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO>
+    handleResourceNotFoundException(
+            ResourceNotFoundException ex) {
+
+        ErrorResponseDTO error =
+                new ErrorResponseDTO(
+                        ex.getMessage(),
+                        HttpStatus.NOT_FOUND.value());
+
+        return new ResponseEntity<>(
+                error,
+                HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponseDTO>
+    handleGlobalException(Exception ex) {
+
+        ErrorResponseDTO error =
+                new ErrorResponseDTO(
+                        ex.getMessage(),
+                        HttpStatus.INTERNAL_SERVER_ERROR.value());
+
+        return new ResponseEntity<>(
+                error,
+                HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+}
+13. Swagger Dependency
+<dependency>
+    <groupId>org.springdoc</groupId>
+    <artifactId>
+        springdoc-openapi-starter-webmvc-ui
+    </artifactId>
+    <version>2.8.14</version>
+</dependency>
+
+Swagger URL:
+
+http://localhost:8080/swagger-ui/index.html
+14. Config Server Setup
+Config Repo
+config-repo
+│
+├── customer-service.yml
+├── policy-service.yml
+├── claim-service.yml
+application.yml
+spring:
+  config:
+    import: configserver:http://configserver:8071
+15. RabbitMQ + Bus Refresh
+
+Dependency:
+
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>
+        spring-cloud-starter-bus-amqp
+    </artifactId>
+</dependency>
+16. Docker
+Docker Compose
+services:
+
+  rabbit:
+    image: rabbitmq:3-management
+
+  configserver:
+    image: configserver:s1
+
+  customers:
+    image: customers:s1
+
+  policies:
+    image: policies:s1
+
+  claims:
+    image: claims:s1
+17. H2 Database
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+18. Runtime Config Refresh Demo
+Change in GitHub
+build:
+  version: "2.0"
+
+Push to GitHub.
+
+Webhook triggers:
+
+GitHub → Config Server → RabbitMQ → All Services Refresh
+
+without restarting services.
+
+19. Advanced Features You Can Add Later
+Feature	Level
+API Gateway	Intermediate
+Feign Client	Intermediate
+Kafka	Advanced
+Redis Cache	Advanced
+JWT Security	Advanced
+Circuit Breaker	Advanced
+Zipkin Tracing	Advanced
+20. Best Learning Order
+Phase 1
+
+Build single microservice:
+
+CRUD
+layers
+H2
+Swagger
+Phase 2
+
+Split into:
+
+customer
+policy
+claim
+Phase 3
+
+Add:
+
+Config Server
+RabbitMQ
+Bus Refresh
+Phase 4
+
+Add:
+
+Docker
+Docker Compose
